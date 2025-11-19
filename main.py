@@ -184,31 +184,14 @@ def generate_docx():
             # conversion failed; include DOCX as fallback
             generated_pdfs.append(os.path.basename(output_path))
 
-    # Prepare auto-download page for both PDFs (or DOCX fallback)
+    # Prepare data for the download template: pairs of (display name, link)
     final_child_folder = os.path.basename(temp_dir)
-    download_links = [f"/download/{final_child_folder}/{name}" for name in generated_pdfs]
+    files_for_template = [(name, f"/download/{final_child_folder}/{name}") for name in generated_pdfs]
+    # failed conversions are those that are not PDF files
+    failed = [name for name in generated_pdfs if not name.lower().endswith('.pdf')]
 
-    # Render a small HTML that triggers both downloads via JS (and shows links if blocked)
-    auto_html = """
-    <!doctype html>
-    <html>
-    <head>
-      <meta charset='utf-8'>
-      <title>Descarcare documente</title>
-    </head>
-    <body>
-      <p>Dacă descărcarea nu pornește automat, folosiți link-urile de mai jos:</p>
-      %s
-      <script>
-        // Auto-click each link with a small delay to allow browsers to handle multiple downloads
-        const links = document.querySelectorAll('a.auto-download');
-        links.forEach((a, i) => setTimeout(() => a.click(), i * 700));
-      </script>
-    </body>
-    </html>
-    """
-    links_html = '\n'.join([f"<div><a class='auto-download' href='{lnk}' download>{os.path.basename(lnk)}</a></div>" for lnk in download_links])
-    return auto_html % links_html
+    # Render the nicer download page (templates/download.html)
+    return render_template('download.html', files=files_for_template, failed=failed)
 
 if __name__ == '__main__':
     app.run(debug=True)
