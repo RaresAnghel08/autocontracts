@@ -6,9 +6,7 @@ from PIL import Image
 from docx2pdf import convert
 import shutil
 import subprocess
-import io, datetime, os, re, copy, traceback, logging
-
-logging.basicConfig(level=logging.INFO)
+import io, datetime, os, re, copy
 
 app = Flask(__name__)
 
@@ -74,7 +72,6 @@ def generate_docx():
     except Exception:
         # don't fail the whole request if cleanup/move can't run
         pass
-        
     signature_path = os.path.join(temp_dir, 'signature.png')
 
     # Salvăm semnătura ca imagine
@@ -92,7 +89,6 @@ def generate_docx():
     ]
 
     generated_pdfs = []
-    conversion_errors = {}
     # compile a regex to catch {{semnatura}} with optional spaces and case-insensitive
     sig_pattern = re.compile(r"\{\{\s*semnatura\s*\}\}", flags=re.IGNORECASE)
     for template_path, output_name in contracts:
@@ -167,47 +163,52 @@ def generate_docx():
             # Try docx2pdf (MS Word COM on Windows)
             try:
                 convert(input_docx, output_pdf)
-                return True, None
-            except Exception as e:
-                err = traceback.format_exc()
-                logging.info(f"docx2pdf failed for {input_docx}: {e}")
-                # continue to fallback
-
+                return True
+            except Exception:
+                pass
             # Try LibreOffice/soffice headless conversion
             soffice = shutil.which('soffice') or shutil.which('libreoffice')
             if soffice:
                 try:
                     outdir = os.path.dirname(output_pdf)
                     subprocess.run([soffice, '--headless', '--convert-to', 'pdf', '--outdir', outdir, input_docx], check=True)
-                    if os.path.exists(output_pdf):
-                        return True, None
-                    else:
-                        return False, 'LibreOffice conversion did not produce output file.'
-                except Exception as e:
-                    err = traceback.format_exc()
-                    logging.info(f"LibreOffice conversion failed for {input_docx}: {e}")
-                    return False, err
+                    return os.path.exists(output_pdf)
+                except Exception:
+                    return False
+            return False
 
-            # no converter available
-            return False, 'No available converter (docx2pdf/soffice)'
-
-        converted, err = try_convert_to_pdf(output_path, pdf_path)
+        converted = try_convert_to_pdf(output_path, pdf_path)
         if converted:
             generated_pdfs.append(pdf_name)
         else:
-            # conversion failed; record error but DO NOT append DOCX fallback
-            conversion_errors[output_name] = err
-            logging.error(f"Conversion failed for {output_name}: {err}")
+            # conversion failed; include DOCX as fallback
+            generated_pdfs.append(os.path.basename(output_path))
 
-    # Prepare download items (only PDFs)
+    # Prepare auto-download page for both PDFs (or DOCX fallback)
     final_child_folder = os.path.basename(temp_dir)
-    pdf_files = generated_pdfs
-    download_items = [(name, f"/download/{final_child_folder}/{name}") for name in pdf_files]
+    download_links = [f"/download/{final_child_folder}/{name}" for name in generated_pdfs]
 
-    if conversion_errors:
-        return render_template('download.html', files=download_items, failed=list(conversion_errors.keys()), errors=conversion_errors)
-
-    return render_template('download.html', files=download_items, failed=None, errors=None)
+    # Render a small HTML that triggers both downloads via JS (and shows links if blocked)
+    auto_html = """
+    <!doctype html>
+    <html>
+    <head>
+      <meta charset='utf-8'>
+      <title>Descarcare documente</title>
+    </head>
+    <body>
+      <p>Dacă descărcarea nu pornește automat, folosiți link-urile de mai jos:</p>
+      %s
+      <script>
+        // Auto-click each link with a small delay to allow browsers to handle multiple downloads
+        const links = document.querySelectorAll('a.auto-download');
+        links.forEach((a, i) => setTimeout(() => a.click(), i * 700));
+      </script>
+    </body>
+    </html>
+    """
+    links_html = '\n'.join([f"<div><a class='auto-download' href='{lnk}' download>{os.path.basename(lnk)}</a></div>" for lnk in download_links])
+    return auto_html % links_html
 
 if __name__ == '__main__':
     app.run(debug=True)
