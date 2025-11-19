@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Generare Contracte Ariel</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <main class="container">
+    <h1>Formular completare contracte Grădinița Ariel</h1>
+    <form action="/generate" method="post" class="form">
+      <fieldset>
+        <legend>Date copil</legend>
+        <label>Nume copil:<input name="nume_copil" required></label>
+        <label>Prenume copil:<input name="prenume_copil" required></label>
+        <label>CNP copil:<input name="cnp_copil" required></label>
+        <label>Data nașterii copil:<input type="date" name="data_nasterii_copil"></label>
+        <label>Adresa copil:<input name="adresa_copil"></label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Date mamă</legend>
+        <label>Nume mamă:<input name="nume_mama" required></label>
+        <label>CNP mamă:<input name="cnp_mama"></label>
+        <label>Adresă mamă:<input name="adresa_mama"></label>
+        <label>Email mamă:<input name="email_mama"></label>
+        <label>Telefon mamă:<input name="telefon_mama"></label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Date tată</legend>
+        <label>Nume tată:<input name="nume_tata"></label>
+        <label>CNP tată:<input name="cnp_tata"></label>
+        <label>Adresă tată:<input name="adresa_tata"></label>
+        <label>Email tată:<input name="email_tata"></label>
+        <label>Telefon tată:<input name="telefon_tata"></label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Alte informații</legend>
+        <label>Telefon bunici:<input name="telefon_bunici"></label>
+        <label>Telefon urgență:<input name="tel_urgenta"></label>
+        <label>Probleme medicale:<input name="probleme_medicale"></label>
+        <label>Alergii:<input name="alergii"></label>
+        <label>Persoane autorizate preluare copil:<input name="persoane_autorizate"></label>
+        <label>Alte observații:<input name="alte_observatii"></label>
+      </fieldset>
+
+      <label>Program ales:
+        <select name="program">
+          <option value="normal">Normal (8:00-12:30)</option>
+          <option value="prelungit">Prelungit (8:00-18:00)</option>
+        </select>
+      </label>
+
+      <fieldset>
+        <legend>Semnătură</legend>
+        <canvas id="signature" width="420" height="140" class="signature"></canvas>
+        <input type="hidden" name="signature_data" id="signature_data">
+        <div class="sig-controls">
+          <button type="button" id="clearSig">Șterge semnătura</button>
+        </div>
+      </fieldset>
+
+      <div class="actions">
+        <button type="submit" class="btn-primary">Generează contracte PDF</button>
+      </div>
+    </form>
+  </main>
+
+  <script>
+    (function(){
+      const canvas = document.getElementById('signature');
+      const ctx = canvas.getContext('2d');
+      ctx.lineWidth = 2;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      let drawing = false;
+
+      function getPos(e){
+        const rect = canvas.getBoundingClientRect();
+        return { x: (e.clientX - rect.left), y: (e.clientY - rect.top) };
+      }
+
+      canvas.addEventListener('pointerdown', (e) => { drawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); });
+      canvas.addEventListener('pointermove', (e) => { if(!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); });
+      canvas.addEventListener('pointerup', () => { drawing = false; });
+      canvas.addEventListener('pointerleave', () => { drawing = false; });
+
+      document.getElementById('clearSig').addEventListener('click', () => { ctx.clearRect(0,0,canvas.width,canvas.height); });
+
+      document.querySelector('form').addEventListener('submit', function(ev){
+        const dataUrl = canvas.toDataURL();
+        document.getElementById('signature_data').value = dataUrl;
+      });
+    })();
+  </script>
+</body>
+</html>
