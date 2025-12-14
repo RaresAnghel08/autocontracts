@@ -13,7 +13,7 @@
         <div class="success-icon">✓</div>
         <div>
           <h1>Documentele sunt gata</h1>
-          <p class="muted">Am generat documentele — descărcarea va porni automat.</p>
+          <p class="muted">Am generat documentele — folosiți butoanele <em>Descarcă</em> pentru a le salva local.</p>
         </div>
       </div>
 
@@ -37,7 +37,7 @@
               <div class="file-name">{{ name }}</div>
             </div>
             <div class="file-actions">
-              <a class="btn auto-download" href="{{ link }}" download>Descarcă</a>
+              <a class="btn" href="{{ link }}" download>Descarcă</a>
             </div>
           </div>
         {% endfor %}
@@ -51,11 +51,6 @@
     </section>
   </main>
 
-  <script>
-    (function(){
-      const links = document.querySelectorAll('a.auto-download');
-      links.forEach((a, i) => setTimeout(() => a.click(), i * 700));
-    })();
-  </script>
+  <!-- Auto-download removed intentionally to avoid browser pop-up/blocking issues -->
 </body>
 </html>
