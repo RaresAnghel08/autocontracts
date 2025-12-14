@@ -2,4 +2,4 @@ Flask
 python-docx
 Pillow
 docx2pdf
-pywin32
+pywin32==311
