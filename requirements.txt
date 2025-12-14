@@ -2,4 +2,4 @@ Flask
 python-docx
 Pillow
 docx2pdf
-pywin32==307
+pywin32==311; sys_platform == "win32"
