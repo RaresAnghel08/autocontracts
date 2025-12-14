@@ -1,12 +1,15 @@
 from flask import Flask, render_template, request, send_file
 from docx import Document
 from io import BytesIO
+from docx.shared import Inches
 import base64
 from PIL import Image
 from docx2pdf import convert
 import shutil
 import subprocess
 import io, datetime, os, re, copy
+import logging
+import pythoncom
 
 app = Flask(__name__)
 
@@ -99,8 +102,24 @@ def generate_docx():
             nonlocal signature_inserted
             # replace normal placeholders from form data
             for key, val in data.items():
-                if key != 'signature_data' and f'{{{{{key}}}}}' in p.text:
-                    p.text = p.text.replace(f'{{{{{key}}}}}', val)
+                if key != 'signature_data':
+                    if f'{{{{{key}}}}}' in p.text:
+                        p.text = p.text.replace(f'{{{{{key}}}}}', val)
+
+            # special for {{4}} program selection: use checkbox characters so boxes remain visible
+            if '{{4}}' in p.text:
+                prog = data.get('program', '')
+                # use checked/unchecked box unicode characters
+                checked = '☑'
+                unchecked = '☐'
+                if prog == 'normal':
+                    # first {{4}} -> checked, second -> unchecked
+                    p.text = p.text.replace('{{4}}', checked, 1).replace('{{4}}', unchecked, 1)
+                elif prog == 'prelungit':
+                    # first -> unchecked, second -> checked
+                    p.text = p.text.replace('{{4}}', unchecked, 1).replace('{{4}}', checked, 1)
+                else:
+                    p.text = p.text.replace('{{4}}', unchecked)
 
             # check for signature placeholder variants
             if sig_pattern.search(p.text):
@@ -108,7 +127,8 @@ def generate_docx():
                 p.text = sig_pattern.sub('', p.text)
                 try:
                     # add picture which creates a new paragraph with the image
-                    doc.add_picture(signature_path)
+                    width = Inches(2)
+                    doc.add_picture(signature_path, width=width)
                     pic_para = doc.paragraphs[-1]
                     # get the drawing element from the picture run
                     pic_run = pic_para.runs[0] if pic_para.runs else None
@@ -145,11 +165,18 @@ def generate_docx():
                     for p in cell.paragraphs:
                         replace_placeholders_in_paragraph(p)
 
+        # process textboxes in shapes
+        for shape in doc.inline_shapes:
+            if hasattr(shape, 'has_text_frame') and shape.has_text_frame:
+                for p in shape.text_frame.paragraphs:
+                    replace_placeholders_in_paragraph(p)
+
         # If no {{semnatura}} was present/inserted, add signature block at end
         if not signature_inserted:
             doc.add_paragraph(f"\nSemnătură părinte:\n{data.get('nume_mama', '')} / {data.get('nume_tata', '')}")
             try:
-                doc.add_picture(signature_path)
+                width = Inches(2)
+                doc.add_picture(signature_path, width=width)
             except Exception:
                 pass
         output_path = os.path.join(temp_dir, output_name)
@@ -162,9 +189,11 @@ def generate_docx():
         def try_convert_to_pdf(input_docx, output_pdf):
             # Try docx2pdf (MS Word COM on Windows)
             try:
+                pythoncom.CoInitialize()
                 convert(input_docx, output_pdf)
                 return True
-            except Exception:
+            except Exception as e:
+                logging.error(f"docx2pdf failed for {input_docx}: {e}")
                 pass
             # Try LibreOffice/soffice headless conversion
             soffice = shutil.which('soffice') or shutil.which('libreoffice')
@@ -173,7 +202,8 @@ def generate_docx():
                     outdir = os.path.dirname(output_pdf)
                     subprocess.run([soffice, '--headless', '--convert-to', 'pdf', '--outdir', outdir, input_docx], check=True)
                     return os.path.exists(output_pdf)
-                except Exception:
+                except Exception as e:
+                    logging.error(f"soffice failed for {input_docx}: {e}")
                     return False
             return False
 
