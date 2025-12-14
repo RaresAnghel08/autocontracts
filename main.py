@@ -101,8 +101,9 @@ def generate_docx():
         def replace_placeholders_in_paragraph(p):
             nonlocal signature_inserted
             # replace normal placeholders from form data
+            # skip numeric placeholders handled specially (e.g. '3' and '4')
             for key, val in data.items():
-                if key != 'signature_data':
+                if key not in ('signature_data', '3', '4'):
                     if f'{{{{{key}}}}}' in p.text:
                         p.text = p.text.replace(f'{{{{{key}}}}}', val)
 
@@ -120,6 +121,24 @@ def generate_docx():
                     p.text = p.text.replace('{{4}}', unchecked, 1).replace('{{4}}', checked, 1)
                 else:
                     p.text = p.text.replace('{{4}}', unchecked)
+
+            # special for {{3}} consent: use checkbox characters and preserve labels
+            if '{{3}}' in p.text:
+                consent = data.get('3', '').lower()
+                checked = '☑'
+                unchecked = '☐'
+                is_agree = consent in ('da', 'sunt', 'sunt de acord', 'true', 'on', 'yes')
+                # If template contains two placeholders (one per option), mark first/second appropriately
+                if p.text.count('{{3}}') >= 2:
+                    if is_agree:
+                        # first -> checked, second -> unchecked
+                        p.text = p.text.replace('{{3}}', checked, 1).replace('{{3}}', unchecked, 1)
+                    else:
+                        # first -> unchecked, second -> checked
+                        p.text = p.text.replace('{{3}}', unchecked, 1).replace('{{3}}', checked, 1)
+                else:
+                    # single placeholder: replace with checked/unchecked
+                    p.text = p.text.replace('{{3}}', checked if is_agree else unchecked)
 
             # check for signature placeholder variants
             if sig_pattern.search(p.text):
