@@ -104,9 +104,9 @@ def generate_docx():
         def replace_placeholders_in_paragraph(p):
             nonlocal signature_inserted
             # replace normal placeholders from form data
-            # skip numeric placeholders handled specially (e.g. '3' and '4')
+            # skip numeric placeholders handled specially (e.g. '3', '4', '5')
             for key, val in data.items():
-                if key not in ('signature_data', '3', '4'):
+                if key not in ('signature_data', '3', '4', '5'):
                     if f'{{{{{key}}}}}' in p.text:
                         p.text = p.text.replace(f'{{{{{key}}}}}', val)
 
@@ -124,6 +124,25 @@ def generate_docx():
                     p.text = p.text.replace('{{4}}', unchecked, 1).replace('{{4}}', checked, 1)
                 else:
                     p.text = p.text.replace('{{4}}', unchecked)
+
+            # special for {{5}} group selection: render checked/unchecked for four group options
+            if '{{5}}' in p.text:
+                grp = data.get('5', '').lower()
+                checked = '☑'
+                unchecked = '☐'
+                # expected four placeholders in template for the four groups
+                if p.text.count('{{5}}') >= 4:
+                    order = ['mica', 'mica_b', 'mijlocie', 'mare']
+                    new_text = p.text
+                    for opt in order:
+                        if grp == opt:
+                            new_text = new_text.replace('{{5}}', checked, 1)
+                        else:
+                            new_text = new_text.replace('{{5}}', unchecked, 1)
+                    p.text = new_text
+                else:
+                    # fallback: single placeholder -> checked if any group chosen
+                    p.text = p.text.replace('{{5}}', checked if grp else unchecked)
 
             # special for {{3}} consent: use checkbox characters and preserve labels
             if '{{3}}' in p.text:
