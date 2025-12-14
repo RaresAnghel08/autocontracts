@@ -9,7 +9,10 @@ import shutil
 import subprocess
 import io, datetime, os, re, copy
 import logging
-import pythoncom
+try:
+    import pythoncom
+except Exception:
+    pythoncom = None
 
 app = Flask(__name__)
 
@@ -208,9 +211,16 @@ def generate_docx():
         def try_convert_to_pdf(input_docx, output_pdf):
             # Try docx2pdf (MS Word COM on Windows)
             try:
-                pythoncom.CoInitialize()
-                convert(input_docx, output_pdf)
-                return True
+                if pythoncom is not None:
+                    try:
+                        pythoncom.CoInitialize()
+                    except Exception:
+                        pass
+                    convert(input_docx, output_pdf)
+                    return True
+                else:
+                    # pythoncom not available (non-Windows); skip docx2pdf
+                    logging.info("pythoncom not available; skipping docx2pdf (Word COM)")
             except Exception as e:
                 logging.error(f"docx2pdf failed for {input_docx}: {e}")
                 pass
