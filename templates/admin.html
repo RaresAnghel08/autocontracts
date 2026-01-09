@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <style>
+    .admin-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    .filters { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; }
+    .contract-list { display: grid; gap: 10px; }
+    .contract-item { border: 1px solid #ddd; padding: 15px; border-radius: 5px; background: #f9f9f9; }
+    .contract-header { display: flex; justify-content: space-between; align-items: center; }
+    .contract-name { font-weight: bold; }
+    .contract-date { color: #666; }
+    .contract-actions { display: flex; gap: 10px; }
+    .btn { padding: 5px 10px; border: none; border-radius: 3px; cursor: pointer; text-decoration: none; display: inline-block; }
+    .btn-primary { background: #007bff; color: white; }
+    .btn:hover { opacity: 0.8; }
+  </style>
+</head>
+<body>
+  <div class="admin-container">
+    <h1>Admin Dashboard - Contracte</h1>
+    
+    <div class="filters">
+      <form method="GET" id="filterForm" style="display: flex; gap: 10px; align-items: center;">
+        <label>
+          Grădiniță:
+          <select name="kindergarten" id="kindergartenSelect">
+            <option value="ariel" {% if kindergarten == 'ariel' %}selected{% endif %}>Grădinița Ariel</option>
+            <option value="marshmallow" {% if kindergarten == 'marshmallow' %}selected{% endif %}>Grădinița Marshmallow</option>
+          </select>
+        </label>
+        <label>
+          Caută după nume copil:
+          <input type="text" name="search" id="searchInput" value="{{ search }}" placeholder="Nume sau prenume">
+        </label>
+        <button type="submit" class="btn btn-primary">Caută</button>
+      </form>
+    </div>
+    
+    <div class="contract-list">
+      {% for contract in contracts %}
+      <div class="contract-item">
+        <div class="contract-header">
+          <div>
+            <div class="contract-name">{{ contract.nume_copil }} {{ contract.prenume_copil }}</div>
+            <div class="contract-date">Contract: {{ contract.numar_contract }} - {{ contract.data_contract }}</div>
+          </div>
+          <div class="contract-actions">
+            <a href="/generate_pdf/{{ 'marshmallow' if kindergarten == 'marshmallow' else 'ariel' }}/{{ contract.id }}/educational" class="btn btn-primary">Contract Educațional</a>
+            <a href="/generate_pdf/{{ 'marshmallow' if kindergarten == 'marshmallow' else 'ariel' }}/{{ contract.id }}/catering" class="btn btn-primary">Contract Catering</a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    
+    {% if not contracts %}
+    <p>Nu s-au găsit contracte.</p>
+    {% endif %}
+  </div>
+
+  <script>
+    // Auto-refresh functionality
+    document.addEventListener('DOMContentLoaded', function() {
+      const kindergartenSelect = document.getElementById('kindergartenSelect');
+      const searchInput = document.getElementById('searchInput');
+      const filterForm = document.getElementById('filterForm');
+
+      // Auto-submit when kindergarten changes
+      kindergartenSelect.addEventListener('change', function() {
+        filterForm.submit();
+      });
+
+      // Auto-submit when search input changes (with debounce)
+      let searchTimeout;
+      searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(function() {
+          filterForm.submit();
+        }, 500); // Wait 500ms after user stops typing
+      });
+    });
+  </script>
+</body>
+</html>

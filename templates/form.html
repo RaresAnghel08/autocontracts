@@ -8,8 +8,17 @@
 </head>
 <body>
   <main class="container">
-    <h1>Formular completare contracte Grădinița Ariel</h1>
+    <h1>Formular completare contracte Grădiniță</h1>
     <form action="/generate" method="post" class="form">
+      <fieldset>
+        <legend>Grădiniță</legend>
+        <label>Grădiniță:
+          <select name="kindergarten" required>
+            <option value="ariel">Grădinița Ariel</option>
+            <option value="marshmallow">Grădinița Marshmallow</option>
+          </select>
+        </label>
+      </fieldset>
       <fieldset>
         <legend>Date copil</legend>
         <label>Nume copil:<input name="nume_copil" required></label>

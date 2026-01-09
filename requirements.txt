@@ -4,3 +4,7 @@ Pillow
 docx2pdf
 pywin32==311; sys_platform == "win32"
 gunicorn
+psycopg2-binary
+Flask-SQLAlchemy
+reportlab
+python-dotenv
